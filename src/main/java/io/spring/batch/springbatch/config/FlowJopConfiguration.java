@@ -1,10 +1,8 @@
 package io.spring.batch.springbatch.config;
 
 import io.spring.batch.springbatch.CustomTasklet;
-import java.util.Date;
 import lombok.RequiredArgsConstructor;
 import org.springframework.batch.core.Job;
-import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.StepContribution;
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
@@ -18,25 +16,28 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 @RequiredArgsConstructor
-public class HelloConfiguration {
+public class FlowJopConfiguration {
 
     private final JobBuilderFactory jobBuilderFactory;
 
     private final StepBuilderFactory stepBuilderFactory;
 
     @Bean
-    public Job helloJob() {
+    public Job flowJob() {
 
-        return jobBuilderFactory.get("helloJob1")
-            .start(helloStep1())
-            .next(helloStep2())
+        return jobBuilderFactory.get("flowJob")
+            .start(flowStep1())
             .incrementer(new RunIdIncrementer())
+            .on("COMPLETED").to(flowStep3())
+            .from(flowStep1())
+            .on("FAILED").to(flowStep2())
+            .end()
             .build();
     }
 
     @Bean
-    public Step helloStep1() {
-        return stepBuilderFactory.get("helloStep1")
+    public Step flowStep1() {
+        return stepBuilderFactory.get("flowStep1")
             .tasklet(new Tasklet() {
                 @Override
                 public RepeatStatus execute(StepContribution stepContribution,
@@ -44,16 +45,45 @@ public class HelloConfiguration {
 
                     System.out.println("Hello!! spring batch!!");
 
-                    return RepeatStatus.FINISHED;
+                    throw new RuntimeException();
+
+//                    return RepeatStatus.FINISHED;
                 }
             }).build();
     }
 
     @Bean
-    public Step helloStep2() {
-        return stepBuilderFactory.get("helloStep2")
-            .tasklet(new CustomTasklet())
+    public Step flowStep2() {
+        return stepBuilderFactory.get("step2")
+            .tasklet(new Tasklet() {
+                @Override
+                public RepeatStatus execute(StepContribution stepContribution,
+                    ChunkContext chunkContext) throws Exception {
+
+                    System.out.println("This is For Fail step2");
+
+                    return RepeatStatus.FINISHED;
+                }
+            })
             .build();
     }
+
+    @Bean
+    public Step flowStep3() {
+        return stepBuilderFactory.get("step3")
+            .tasklet(new Tasklet() {
+                @Override
+                public RepeatStatus execute(StepContribution stepContribution,
+                    ChunkContext chunkContext) throws Exception {
+
+
+                    System.out.println("This is Complete step3");
+
+                    return RepeatStatus.FINISHED;
+                }
+            })
+            .build();
+    }
+
 
 }
